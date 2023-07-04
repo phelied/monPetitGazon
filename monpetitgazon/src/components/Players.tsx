@@ -5,10 +5,10 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Image,
+  ScrollView,
+  TextInput,
 } from "react-native";
 import API from "../utils/API";
-import Clubs from "./Clubs";
 
 interface Players {
   id: string;
@@ -29,19 +29,20 @@ interface Players {
 
 interface PlayerDetail {
   id: number;
-  name: string;
-  goals: number;
-  assists: number;
-  yellowCards: number;
-  redCards: number;
+  type: string;
+  position: number;
+  ultraPosition: number;
+  championships: any;
 }
 
 const Players = () => {
-  const [selectedTab, setSelectedTab] = useState("clubs");
   const [players, setPlayers] = useState<Players[]>([]);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerDetail | null>(
     null
   );
+  const [selectedPosition, setSelectedPosition] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     API.fetchPlayers().then((data) => {
@@ -68,51 +69,107 @@ const Players = () => {
     }
   };
 
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
   const getPlayerInfo = async (playerId: string) => {
     API.fetchPlayerDetail(playerId).then((data) => {
-      setPlayers(data);
+      setSelectedPlayer(data);
+      if (selectedPlayerId === playerId) {
+        setSelectedPlayerId(null); // Réduit le contenu si déjà expansé
+      } else {
+        setSelectedPlayerId(playerId); // Étend le contenu pour le joueur correspondant à l'ID
+      }
     });
   };
 
-  const renderPlayerItem = ({ item }: { item: Players }) => (
-    <TouchableOpacity
-      style={{ flex: 1 }}
-      onPress={() => getPlayerInfo(item.id)}
-    >
-      <View style={styles.clubCard}>
-        <Text
-          style={styles.clubInfo}
-        >{`${item.lastName} ${item.firstName}`}</Text>
-        <Text style={styles.clubInfo}>
-          {getPlayerPosition(item.ultraPosition)}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-
-  const renderPlayerDetail = () => {
-    if (selectedPlayer) {
-      return (
-        <View style={{ padding: 10 }}>
-          <Text>Player: {selectedPlayer.name}</Text>
-          <Text>Goals: {selectedPlayer.goals}</Text>
-          <Text>Assists: {selectedPlayer.assists}</Text>
-          <Text>Yellow Cards: {selectedPlayer.yellowCards}</Text>
-          <Text>Red Cards: {selectedPlayer.redCards}</Text>
-        </View>
-      );
-    } else {
+  const renderPlayers = ({ item }: { item: Players }) => {
+    if (selectedPosition && item.ultraPosition !== selectedPosition) {
       return null;
     }
+
+    if (
+      searchQuery &&
+      (!item.firstName ||
+        !item.firstName.toLowerCase().includes(searchQuery.toLowerCase()))
+    ) {
+      return null;
+    }
+
+    return (
+      <TouchableOpacity
+        style={{ flex: 1 }}
+        onPress={() => getPlayerInfo(item.id)}
+      >
+        <View style={styles.clubCard}>
+          <Text
+            style={styles.clubInfo}
+          >{`${item.lastName} ${item.firstName}`}</Text>
+          <Text style={styles.clubInfo}>
+            {getPlayerPosition(item.ultraPosition)}
+          </Text>
+
+          {item.id === selectedPlayerId && (
+            <View style={styles.playerDetails}>
+              <Text style={styles.playerDetailText}>
+                {console.log(selectedPlayer?.championships[1].clubs)}
+                Quotation :{" "}
+                {selectedPlayer?.championships[1].averagePercentRanks.quotation}
+                Clubs : {selectedPlayer?.championships[1].clubs[0]}
+              </Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
   };
 
+  const filterByPosition = (positionId: number) => {
+    setSelectedPosition(positionId);
+  };
+
+  const positionFilters = [
+    { positionId: 10, label: "Gardien" },
+    { positionId: 20, label: "Défenseur" },
+    { positionId: 21, label: "Latéral" },
+    { positionId: 30, label: "Milieu défensif" },
+    { positionId: 31, label: "Milieu offensif" },
+    { positionId: 40, label: "Attaquant" },
+  ];
+
   return (
-    <FlatList
-      data={Object.values(players)}
-      renderItem={renderPlayerItem}
-      keyExtractor={(item) => item.id}
-      numColumns={3}
-    />
+    <View>
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+          {positionFilters.map((filter) => (
+            <TouchableOpacity
+              key={filter.positionId}
+              style={[
+                styles.filterButton,
+                selectedPosition === filter.positionId &&
+                  styles.selectedFilterButton,
+              ]}
+              onPress={() => filterByPosition(filter.positionId)}
+            >
+              <Text style={styles.filterButtonText}>{filter.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Rechercher par nom"
+        onChangeText={handleSearch}
+        value={searchQuery}
+      />
+      <FlatList
+        data={players}
+        renderItem={renderPlayers}
+        keyExtractor={(item) => item.id}
+        numColumns={3}
+      />
+    </View>
   );
 };
 
@@ -120,7 +177,7 @@ export default Players;
 
 const styles = StyleSheet.create({
   clubCard: {
-    flex: 2,
+    flex: 1,
     backgroundColor: "#B3D93B",
     margin: 10,
     padding: 10,
@@ -130,5 +187,43 @@ const styles = StyleSheet.create({
     color: "#6200BE",
     fontSize: 12,
     marginTop: 10,
+  },
+  playerDetails: {
+    backgroundColor: "#B3D93B",
+    padding: 10,
+    borderRadius: 8,
+  },
+  playerDetailText: {
+    color: "#FFFFFD",
+    marginBottom: 5,
+  },
+  filterContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginHorizontal: 10,
+    marginBottom: 10,
+    marginTop: 10,
+  },
+  filterButton: {
+    backgroundColor: "#6200BE",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    marginVertical: 2,
+    marginHorizontal: 5,
+    borderRadius: 8,
+  },
+  selectedFilterButton: {
+    backgroundColor: "#B3D93B",
+  },
+  filterButtonText: {
+    color: "#FFFFFD",
+  },
+  searchInput: {
+    backgroundColor: "#FFFFFD",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginHorizontal: 10,
+    marginBottom: 10,
   },
 });
