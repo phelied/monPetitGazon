@@ -9,6 +9,12 @@ import {
   TextInput,
 } from "react-native";
 import API from "../utils/API";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from '@react-navigation/stack';
+
+export type RootStackParamList = {
+  playerDetails: { playerId: string } | undefined;
+};
 
 interface Players {
   id: string;
@@ -37,12 +43,9 @@ interface PlayerDetail {
 
 const Players = () => {
   const [players, setPlayers] = useState<Players[]>([]);
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<PlayerDetail | null>(
-    null
-  );
   const [selectedPosition, setSelectedPosition] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     API.fetchPlayers().then((data) => {
@@ -73,17 +76,6 @@ const Players = () => {
     setSearchQuery(query);
   };
 
-  const getPlayerInfo = async (playerId: string) => {
-    API.fetchPlayerDetail(playerId).then((data) => {
-      setSelectedPlayer(data);
-      if (selectedPlayerId === playerId) {
-        setSelectedPlayerId(null); // Réduit le contenu si déjà expansé
-      } else {
-        setSelectedPlayerId(playerId); // Étend le contenu pour le joueur correspondant à l'ID
-      }
-    });
-  };
-
   const renderPlayers = ({ item }: { item: Players }) => {
     if (selectedPosition && item.ultraPosition !== selectedPosition) {
       return null;
@@ -100,7 +92,7 @@ const Players = () => {
     return (
       <TouchableOpacity
         style={{ flex: 1 }}
-        onPress={() => getPlayerInfo(item.id)}
+        onPress={() => navigation.navigate("playerDetails", { playerId: item.id })}
       >
         <View style={styles.clubCard}>
           <Text
@@ -109,17 +101,6 @@ const Players = () => {
           <Text style={styles.clubInfo}>
             {getPlayerPosition(item.ultraPosition)}
           </Text>
-
-          {item.id === selectedPlayerId && (
-            <View style={styles.playerDetails}>
-              <Text style={styles.playerDetailText}>
-                {console.log(selectedPlayer?.championships[1].clubs)}
-                Quotation :{" "}
-                {selectedPlayer?.championships[1].averagePercentRanks.quotation}
-                Clubs : {selectedPlayer?.championships[1].clubs[0]}
-              </Text>
-            </View>
-          )}
         </View>
       </TouchableOpacity>
     );

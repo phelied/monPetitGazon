@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, Image } from "react-native";
 import API from "../utils/API";
+import { cleanClubId } from "../utils/utils";
 
 interface Club {
   id: string;
@@ -35,12 +36,6 @@ const Clubs = () => {
       setClubs(data);
     });
   }, []);
-
-  const cleanClubId = (id: String) => {
-    const idWithoutPrefix = id.replace("mpg_", "");
-    const cleanedId = idWithoutPrefix.replace(/_/g, " ");
-    return cleanedId;
-  };
 
   return (
     <FlatList
